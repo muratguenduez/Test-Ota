@@ -1,0 +1,32 @@
+name: OTA Release
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    env:
+      PLATFORMIO_BUILD_FLAGS: -DFW_VERSION=${{ github.run_number }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - run: pip install platformio
+      - run: pio run
+      - name: Release olustur
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ github.run_number }}
+          files: .pio/build/esp32-c3-supermini/firmware.bin
+      - name: Supabase guncelle
+        run: |
+          curl -X PATCH "${{ secrets.SUPABASE_URL }}/rest/v1/cihazlar?cihaz_id=eq.esp32-001" \
+            -H "apikey: ${{ secrets.SUPABASE_SERVICE_KEY }}" \
+            -H "Authorization: Bearer ${{ secrets.SUPABASE_SERVICE_KEY }}" \
+            -H "Content-Type: application/json" \
+            -d '{"hedef_surum": ${{ github.run_number }}, "firmware_url": "https://github.com/muratguenduez/Test-Ota/releases/download/v${{ github.run_number }}/firmware.bin"}'
